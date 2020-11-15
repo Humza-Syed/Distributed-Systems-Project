@@ -53,10 +53,8 @@ public class Bank {
   }
 
   private boolean validCredentialsCheck(Long accountID, Long pin) {
-    if (this.accounts.containsKey(accountID)) {
-      return this.accounts.get(accountID).getPinNumber() == pin;
-    }
-    return false;
+    return this.accounts.containsKey(accountID)
+        && this.accounts.get(accountID).getPinNumber() == pin;
   }
 
   public void displayAccount(Long accountID, Long pin) {
