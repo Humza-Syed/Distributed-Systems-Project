@@ -1,4 +1,4 @@
-package service.Interactions;
+package service.interactions;
 
 public abstract class Interaction {
 
@@ -7,7 +7,7 @@ public abstract class Interaction {
 
   public Interaction(long interactionId, long sourceId) {
     this.interactionId = interactionId;
-    this.sourceId = interactionId;
+    this.sourceId = sourceId;
   }
 
   public long getInteractionId() {

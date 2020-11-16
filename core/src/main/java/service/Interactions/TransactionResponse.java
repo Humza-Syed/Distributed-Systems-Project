@@ -1,4 +1,4 @@
-package service.Interactions;
+package service.interactions;
 
 public class TransactionResponse {
 
