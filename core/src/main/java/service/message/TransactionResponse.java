@@ -1,10 +1,13 @@
-package service.interactions;
+package service.message;
+
+import service.core.Status;
 
 public class TransactionResponse {
 
   long transactionId;
   Status status;
   String message;
+  String validationToken;
 
   public TransactionResponse(long transactionId, Status status, String message) {
     this.transactionId = transactionId;
@@ -23,4 +26,6 @@ public class TransactionResponse {
   public String getMessage() {
     return message;
   }
+
+
 }

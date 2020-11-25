@@ -1,4 +1,4 @@
-package service.interactions;
+package service.core;
 
 public enum Status {
   SUCCESS, FAILURE, ERROR
