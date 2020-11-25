@@ -13,5 +13,6 @@
     <module>core</module>
 	  <module>atm</module>
     <module>atmmanager</module>
+    <module>bankfrontend</module>
   </modules>
 </project>
