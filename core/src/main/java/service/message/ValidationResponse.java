@@ -4,7 +4,7 @@ import service.core.Status;
 
 public class ValidationResponse {
 
-  private final String validationToken;
+  private String validationToken;
   private final Status status;
   private final String message;
 
@@ -24,5 +24,9 @@ public class ValidationResponse {
 
   public String getMessage() {
     return message;
+  }
+
+  public void setValidationToken(String validationToken) {
+    this.validationToken = validationToken;
   }
 }

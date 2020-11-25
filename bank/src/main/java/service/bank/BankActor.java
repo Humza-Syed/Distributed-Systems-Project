@@ -1,7 +1,7 @@
 package service.bank;
 
 import akka.actor.AbstractActor;
-import service.interactions.TransactionRequest;
+import service.message.TransactionRequest;
 
 public class BankActor extends AbstractActor {
 
