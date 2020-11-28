@@ -59,6 +59,18 @@
       <artifactId>akka-serialization-jackson_2.12</artifactId>
       <version>2.6.0-M8</version>
     </dependency>
+    <dependency>
+      <groupId>com.typesafe.akka</groupId>
+      <artifactId>akka-testkit_2.12</artifactId>
+      <version>2.6.0-M8</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.12</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>

@@ -6,8 +6,6 @@ import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.pattern.Patterns;
 import akka.util.Timeout;
-import bankmessage.BankValidationRequest;
-import bankmessage.BankValidationResponse;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
@@ -47,32 +45,26 @@ public class BankRestFront {
       @RequestBody ValidationRequest request)
       throws URISyntaxException, InterruptedException, TimeoutException {
 
-    String internalToken = UUID.randomUUID().toString();
-    BankValidationRequest newInternalRequest = new BankValidationRequest(internalToken, request);
-
-    //TODO investigate that this is correct actor msg implementation
     Timeout t = new Timeout(responseLimit, TimeUnit.SECONDS);
     ActorRef handler = getActor();
-    Future<Object> message = Patterns.ask(handler, newInternalRequest, t);
+    Future<Object> message = Patterns.ask(handler, request, t);
 
-    BankValidationResponse response = (BankValidationResponse) Await.result(message, t.duration());
+    ValidationResponse response = (ValidationResponse) Await.result(message, t.duration());
     actors.put(handler, ActorStatus.AVAILABLE);
 
-    ValidationResponse atmResponse = response.getValidationResponse();
-    if (response.getValidationResponse().getStatus() == Status.SUCCESS) {
-      validTokens.replace(response.getinternalToken(), request.getAccountId());
-    } else {
-      atmResponse.setValidationToken(deniedToken);
+    //ValidationResponse atmResponse = response.getValidationResponse();
+    if (response.getStatus() == Status.SUCCESS) {
+      validTokens.replace(response.getValidationToken(), request.getAccountId());
     }
 
-    String path =
+    String atmPath =
         ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString()
             + "/validation/"
-            + internalToken;
+            + response.getValidationToken();
 
     HttpHeaders headers = new HttpHeaders();
-    headers.setLocation(new URI(path));
-    return new ResponseEntity<>(atmResponse, headers, HttpStatus.CREATED);
+    headers.setLocation(new URI(atmPath));
+    return new ResponseEntity<>(response, headers, HttpStatus.CREATED);
   }
 
   public static int getActorWaitTime() {

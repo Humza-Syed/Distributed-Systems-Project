@@ -23,6 +23,18 @@ public class Account implements Serializable {
     this.balance = balance;
   }
 
+  /**
+   * The deposit/withdraw methods assume that checks were done before to ensure the value is valid.
+   * @param amount The amount to be deposited.
+   */
+  public void deposit(double amount) {
+    balance += amount;
+  }
+
+  public void withdraw(double amount) {
+    balance -= amount;
+  }
+
   public long getAccountId() {
     return accountId;
   }
