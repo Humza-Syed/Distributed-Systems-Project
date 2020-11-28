@@ -31,14 +31,14 @@ public class BankActorTest {
 
   @Test
   public void CreateReceive_ValidationRequest_ValidationResponse() {
-    testBankActorRef.tell(new ValidationRequest(1, 1000), testKit.getRef());
+    testBankActorRef.tell(new ValidationRequest("1", 1, 1000), testKit.getRef());
     testKit.awaitCond(testKit::msgAvailable);
     testKit.expectMsgClass(ValidationResponse.class);
   }
 
   @Test
   public void CreateReceive_BankTransactionRequest_BankTransactionResponse() {
-    testBankActorRef.tell(new TransactionRequest(1, 1, TransactionType.DEPOSIT, 100, "token"),
+    testBankActorRef.tell(new TransactionRequest("1", 1, TransactionType.DEPOSIT, 100, "token"),
         testKit.getRef());
     testKit.awaitCond(testKit::msgAvailable);
     testKit.expectMsgClass(BankTransactionResponse.class);

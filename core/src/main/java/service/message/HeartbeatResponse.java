@@ -1,14 +1,8 @@
 package service.message;
 
-public class HeartbeatResponse {
+public class HeartbeatResponse extends Message{
 
-  private long id;
-
-  public long getId() {
-    return id;
-  }
-
-  public HeartbeatResponse(long id) {
-    this.id = id;
+  public HeartbeatResponse(String messageId) {
+    super(messageId);
   }
 }

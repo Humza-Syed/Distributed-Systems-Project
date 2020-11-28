@@ -60,7 +60,7 @@ public class BankRestFront {
     String atmPath =
         ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString()
             + "/validation/"
-            + response.getValidationToken();
+            + response.getMessageId();
 
     HttpHeaders headers = new HttpHeaders();
     headers.setLocation(new URI(atmPath));
