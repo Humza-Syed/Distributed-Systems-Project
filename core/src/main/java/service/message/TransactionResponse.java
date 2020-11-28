@@ -7,7 +7,6 @@ public class TransactionResponse {
   long transactionId;
   Status status;
   String message;
-  String validationToken;
 
   public TransactionResponse(long transactionId, Status status, String message) {
     this.transactionId = transactionId;

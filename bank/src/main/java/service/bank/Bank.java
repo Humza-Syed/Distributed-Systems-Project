@@ -40,6 +40,10 @@ public class Bank {
     return accounts;
   }
 
+  public Account getAccount(long accountId) {
+    return accounts.get(accountId);
+  }
+
   public void setAccounts(Map<Long, Account> accounts) {
     this.accounts = accounts;
   }
