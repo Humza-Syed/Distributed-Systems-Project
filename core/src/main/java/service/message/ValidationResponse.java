@@ -2,13 +2,14 @@ package service.message;
 
 import service.core.Status;
 
-public class ValidationResponse {
+public class ValidationResponse extends Message {
 
   private String validationToken;
   private final Status status;
   private final String message;
 
-  public ValidationResponse(String validationToken, Status status, String message) {
+  public ValidationResponse(String messageId, String validationToken, Status status, String message) {
+    super(messageId);
     this.validationToken = validationToken;
     this.status = status;
     this.message = message;

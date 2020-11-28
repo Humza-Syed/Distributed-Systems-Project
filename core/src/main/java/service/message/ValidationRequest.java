@@ -1,11 +1,12 @@
 package service.message;
 
-public class ValidationRequest {
+public class ValidationRequest extends Message{
 
   private final long accountId;
   private final int pinNumber;
 
-  public ValidationRequest(long accountId, int pinNumber) {
+  public ValidationRequest(String messageId, long accountId, int pinNumber) {
+    super(messageId);
     this.accountId = accountId;
     this.pinNumber = pinNumber;
   }

@@ -2,20 +2,15 @@ package service.message;
 
 import service.core.Status;
 
-public class TransactionResponse {
+public class TransactionResponse extends Message{
 
-  long transactionId;
   Status status;
   String message;
 
-  public TransactionResponse(long transactionId, Status status, String message) {
-    this.transactionId = transactionId;
+  public TransactionResponse(String messageId, Status status, String message) {
+    super(messageId);
     this.status = status;
     this.message = message;
-  }
-
-  public long getTransactionId() {
-    return transactionId;
   }
 
   public Status getStatus() {
