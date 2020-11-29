@@ -8,13 +8,22 @@ import akka.pattern.Patterns;
 import akka.util.Timeout;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.sql.Timestamp;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-
 import java.util.Map.Entry;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import javax.jms.Connection;
+import javax.jms.ConnectionFactory;
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.MessageProducer;
+import javax.jms.Queue;
+import javax.jms.Session;
+import org.apache.activemq.ActiveMQConnectionFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +37,7 @@ import scala.concurrent.Future;
 import service.bank.BankActor;
 import service.core.ActorStatus;
 import service.core.Status;
+import service.message.BankStatusMessage;
 import service.message.ValidationRequest;
 import service.message.ValidationResponse;
 
@@ -84,5 +94,43 @@ public class BankRestFront {
         .actorOf(Props.create(BankActor.class), UUID.randomUUID().toString());
     actors.put(newActor, ActorStatus.AVAILABLE);
     return newActor;
+  }
+
+  public static void sendStatus() {
+    try {
+      final String bankId = UUID.randomUUID().toString();
+      final String host = "localhost";
+      final String sourceURL = "http://localhost:8085/";
+      final long update_time = 2000;
+
+      ConnectionFactory factory = new ActiveMQConnectionFactory(
+          "failover://tcp://" + host + ":61616");
+      Connection connection = factory.createConnection();
+      connection.setClientID("BFE" + UUID.randomUUID().toString());
+
+      Session session = connection.createSession(false, Session.CLIENT_ACKNOWLEDGE);
+
+      Queue queue = session.createQueue("bankStatus");
+      MessageProducer producer = session.createProducer(queue);
+
+      connection.start();
+
+      new Thread(() -> {
+        try {
+          do {
+            TimeUnit.MILLISECONDS.sleep(update_time);
+            BankStatusMessage statusObject = new BankStatusMessage(bankId, sourceURL);
+            Message statusMessage = session.createObjectMessage(statusObject);
+            producer.send(statusMessage);
+            System.out.println("msg sent : " + new Timestamp(new Date().getTime()));
+          } while (true);
+        } catch (JMSException | InterruptedException e) {
+          e.printStackTrace();
+        }
+      }).start();
+
+    } catch (JMSException e) {
+      e.printStackTrace();
+    }
   }
 }

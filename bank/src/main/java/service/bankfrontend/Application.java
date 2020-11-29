@@ -1,6 +1,5 @@
 package service.bankfrontend;
 
-
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
@@ -49,7 +48,7 @@ public class Application {
       }
 
     }
-
+    BankRestFront.sendStatus();
     SpringApplication.run(Application.class, args);
   }
 }
