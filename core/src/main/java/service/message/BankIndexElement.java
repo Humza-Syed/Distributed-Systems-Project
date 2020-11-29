@@ -1,6 +1,8 @@
 package service.message;
 
-public class BankIndexElement {
+import java.io.Serializable;
+
+public class BankIndexElement implements Serializable {
   private final String bankId;
   private String url;
 

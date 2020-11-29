@@ -1,16 +1,18 @@
 package service.message;
 
-public class BookChange {
+import java.io.Serializable;
 
-  private final BookChange stateChange;
+public class BookChange implements Serializable {
+
+  private final AddressBookChange stateChange;
   private final BankIndexElement bankIndexElement;
 
-  public BookChange(BookChange stateChange, BankIndexElement bankIndexElement) {
+  public BookChange(AddressBookChange stateChange, BankIndexElement bankIndexElement) {
     this.stateChange = stateChange;
     this.bankIndexElement = bankIndexElement;
   }
 
-  public BookChange getStateChange() {
+  public AddressBookChange getStateChange() {
     return stateChange;
   }
 
