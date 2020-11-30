@@ -1,5 +1,7 @@
 package service.message;
 
+import java.io.Serializable;
+
 public class Message {
   private String messageId;
 

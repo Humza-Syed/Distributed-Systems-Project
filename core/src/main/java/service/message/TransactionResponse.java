@@ -2,7 +2,7 @@ package service.message;
 
 import service.core.Status;
 
-public class TransactionResponse extends Message{
+public class TransactionResponse extends Message {
 
   Status status;
   String message;
@@ -12,6 +12,8 @@ public class TransactionResponse extends Message{
     this.status = status;
     this.message = message;
   }
+
+  public TransactionResponse() { }
 
   public Status getStatus() {
     return status;
