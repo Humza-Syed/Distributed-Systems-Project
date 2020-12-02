@@ -6,6 +6,8 @@ import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.pattern.Patterns;
 import akka.util.Timeout;
+import bankmessage.BankTransactionRequest;
+import bankmessage.BankTransactionResponse;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.sql.Timestamp;
@@ -37,6 +39,8 @@ import scala.concurrent.Future;
 import service.bank.BankActor;
 import service.core.ActorStatus;
 import service.core.Status;
+import service.message.TransactionRequest;
+import service.message.TransactionResponse;
 import service.message.BankStatusMessage;
 import service.message.ValidationRequest;
 import service.message.ValidationResponse;
@@ -45,8 +49,7 @@ import service.message.ValidationResponse;
 @RestController
 public class BankRestFront {
 
-  public static final String deniedToken = UUID.randomUUID().toString();
-  private static final int responseLimit = 3;
+  private static final int RESPONSE_LIMIT = 3;
   public static Map<ActorRef, ActorStatus> actors = new HashMap<>();
   private static Map<String, Long> validTokens = new HashMap<>();
 
@@ -55,16 +58,15 @@ public class BankRestFront {
       @RequestBody ValidationRequest request)
       throws URISyntaxException, InterruptedException, TimeoutException {
 
-    Timeout t = new Timeout(responseLimit, TimeUnit.SECONDS);
+    Timeout t = new Timeout(RESPONSE_LIMIT, TimeUnit.SECONDS);
     ActorRef handler = getActor();
     Future<Object> message = Patterns.ask(handler, request, t);
 
     ValidationResponse response = (ValidationResponse) Await.result(message, t.duration());
     actors.put(handler, ActorStatus.AVAILABLE);
 
-    //ValidationResponse atmResponse = response.getValidationResponse();
     if (response.getStatus() == Status.SUCCESS) {
-      validTokens.replace(response.getValidationToken(), request.getAccountId());
+      validTokens.put(response.getValidationToken(), request.getAccountId());
     }
 
     String atmPath =
@@ -75,6 +77,49 @@ public class BankRestFront {
     HttpHeaders headers = new HttpHeaders();
     headers.setLocation(new URI(atmPath));
     return new ResponseEntity<>(response, headers, HttpStatus.CREATED);
+  }
+
+  @RequestMapping(value = "/transaction", method = RequestMethod.POST)
+  public ResponseEntity<TransactionResponse> transactionHandling(
+      @RequestBody TransactionRequest transactionRequest)
+      throws InterruptedException, TimeoutException, URISyntaxException {
+    TransactionResponse transactionResponse;
+
+    // throwing away any messages with null tokens
+    if (transactionRequest.getValidationToken() == null) {
+      transactionResponse = new TransactionResponse(transactionRequest.getMessageId(),
+          Status.FAILURE,
+          "Failure: Bank received transaction with null token");
+    } else if (!validTokens.containsKey(transactionRequest.getValidationToken())) {
+      transactionResponse = new TransactionResponse(transactionRequest.getMessageId(),
+          Status.FAILURE,
+          "Failure: Bank received transaction with a illegal token");
+    } else if (validTokens.get(transactionRequest.getValidationToken()) !=
+        transactionRequest.getAccountId()) {
+      transactionResponse = new TransactionResponse(transactionRequest.getMessageId(),
+          Status.FAILURE,
+          "Failure: Bank received transaction with mismatched token and id");
+    } else { // token has to be legal
+
+      // sending the package asynchronously to a free bank actor,
+      // waiting until receiving response, freeing actor again
+      Timeout time = new Timeout(RESPONSE_LIMIT, TimeUnit.SECONDS);
+      ActorRef handler = getActor();
+      Future<Object> futureResponse = Patterns.ask(handler, transactionRequest, time);
+      BankTransactionResponse packagedResponse =
+          (BankTransactionResponse) Await.result(futureResponse, time.duration());
+      actors.put(handler, ActorStatus.AVAILABLE);
+
+      transactionResponse = packagedResponse.getTransactionResponse();
+      validTokens.remove(transactionRequest.getValidationToken());
+    }
+
+    String path = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString()
+        + "/transaction/" + transactionResponse.getMessageId();
+    HttpHeaders httpHeaders = new HttpHeaders();
+    httpHeaders.setLocation(new URI(path));
+
+    return new ResponseEntity<>(transactionResponse, httpHeaders, HttpStatus.CREATED);
   }
 
   public static int getActorWaitTime() {

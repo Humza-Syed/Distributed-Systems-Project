@@ -1,7 +1,9 @@
 package service.message;
 
+import java.io.Serializable;
+
 public class Message {
-  private final String messageId;
+  private String messageId;
 
   public String getMessageId() {
     return messageId;
@@ -11,4 +13,6 @@ public class Message {
     this.messageId = id;
   }
 
+  public Message() {
+  }
 }

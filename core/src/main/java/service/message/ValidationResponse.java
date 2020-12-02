@@ -5,14 +5,17 @@ import service.core.Status;
 public class ValidationResponse extends Message {
 
   private String validationToken;
-  private final Status status;
-  private final String message;
+  private Status status;
+  private String message;
 
   public ValidationResponse(String messageId, String validationToken, Status status, String message) {
     super(messageId);
     this.validationToken = validationToken;
     this.status = status;
     this.message = message;
+  }
+
+  public ValidationResponse() {
   }
 
   public String getValidationToken() {
