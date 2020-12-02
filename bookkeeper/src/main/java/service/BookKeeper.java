@@ -1,5 +1,9 @@
 package service;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.RemovalListener;
+import java.util.concurrent.TimeUnit;
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
 import javax.jms.JMSException;
@@ -18,48 +22,42 @@ import service.message.BookChange;
 
 public class BookKeeper {
 
-  public static void main(String[] args) {
-    String host = "localhost";
-    if (args.length > 0) {
-      host = args[0];
-    }
+  Cache<String, String> bankStatusCache = CacheBuilder.newBuilder()
+      .maximumSize(5)
+      .expireAfterAccess(10, TimeUnit.SECONDS)
+      .removalListener((RemovalListener<String, String>) removalNotification -> sendUpdateMessage(
+          removalNotification.getKey(), removalNotification.getValue()))
+      .build();
+
+  private final static String BANK_STATUS_QUEUE = "bankStatus";
+
+  private Connection bankStatusConnection;
+  private MessageConsumer bankStatusConsumer;
+
+  public BookKeeper() {
+  }
+
+  public void start(String bookKeeperHost) throws JMSException {
+    initialise(bookKeeperHost);
+
     try {
-      ConnectionFactory factory = new ActiveMQConnectionFactory(
-          "failover://tcp://" + host + ":61616");
-      Connection connection = factory.createConnection();
-      connection.setClientID("BookKeeper");
-      Session session = connection.createSession(false, Session.CLIENT_ACKNOWLEDGE);
-
-      Queue queue = session.createQueue("bankStatus");
-      MessageConsumer consumer = session.createConsumer(queue);
-
-      Topic topic = session.createTopic("addressBookUpdate");
-      MessageProducer producer = session.createProducer(topic);
-
-      connection.start();
-
+      bankStatusConnection.start();
+      // Thread for receiving BankStatusMessage
       new Thread(() -> {
         try {
           do {
-            Message message = consumer.receive();
-            System.out.println("Msg received");
+            Message message = bankStatusConsumer.receive();
             if (message instanceof ObjectMessage) {
               Object content = ((ObjectMessage) message).getObject();
               if (content instanceof BankStatusMessage) {
                 BankStatusMessage inputMessage = (BankStatusMessage) content;
-                System.out.println(
-                    "MSG_ID: " + inputMessage.getMessageId() + " URL: " + inputMessage.getUrl()
-                        + "\n");
-                message.acknowledge();
-                BankIndexElement indexElement = new BankIndexElement("", "");
-                if (bankIndexExistenceCheck(indexElement)) {
-                  BookChange newBookChange = new BookChange(AddressBookChange.INSERT, indexElement);
-                  System.out.println(
-                      "Change: " + newBookChange.getStateChange() + " URL: " + newBookChange
-                          .getBankIndexElement().getBankId() + "\n");
-                  Message update = session.createObjectMessage(newBookChange);
-                  producer.send(update);
+
+                String t = bankStatusCache.getIfPresent(inputMessage.getMessageId());
+                if (t == null) {
+                  bankStatusCache.put(inputMessage.getMessageId(), inputMessage.getUrl());
                 }
+
+                message.acknowledge();
               }
             }
           } while (true);
@@ -67,10 +65,46 @@ public class BookKeeper {
           e.printStackTrace();
         }
       }).start();
-
     } catch (JMSException e) {
       e.printStackTrace();
     }
+
+    // This thread will cleanup all expired entries.
+    while (true) {
+      bankStatusCache.cleanUp();
+      try {
+        Thread.sleep(2500);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+
+  private void initialise(String bookKeeperHost) throws JMSException {
+    // Initialising the bankStatus connection
+    ConnectionFactory bankStatusConnectionFactory = new ActiveMQConnectionFactory(
+        "failover://tcp://" + bookKeeperHost + ":61616");
+    bankStatusConnection = bankStatusConnectionFactory.createConnection();
+    bankStatusConnection.setClientID("BookKeeper");
+    Session bankStatusSession = bankStatusConnection
+        .createSession(false, Session.CLIENT_ACKNOWLEDGE);
+    Queue bankStatusQueue = bankStatusSession.createQueue(BANK_STATUS_QUEUE);
+    bankStatusConsumer = bankStatusSession.createConsumer(bankStatusQueue);
+  }
+
+  private void sendUpdateMessage(String key, String value) {
+    //TODO Send update message via the topic
+    System.out.println("Bank was removed from cache: " + key + " value: " + value);
+  }
+
+  public static void main(String[] args) throws JMSException {
+    String host = "localhost";
+    if (args.length > 0) {
+      host = args[0];
+    }
+
+    BookKeeper bookKeeper = new BookKeeper();
+    bookKeeper.start(host);
   }
 
   public static Boolean bankIndexExistenceCheck(BankIndexElement element) {
