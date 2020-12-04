@@ -3,6 +3,7 @@ package service;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.RemovalListener;
+import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
@@ -16,6 +17,8 @@ import javax.jms.Session;
 import javax.jms.Topic;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import service.message.AddressBookChange;
+import service.message.AddressBookRequest;
+import service.message.AddressBookResponse;
 import service.message.BankInfo;
 import service.message.BankStatusMessage;
 import service.message.BookChange;
@@ -35,11 +38,16 @@ public class BookKeeper {
 
   private final static String BANK_STATUS_QUEUE = "bankStatus";
   private final static String ADDRESS_BOOK_UPDATE_QUEUE = "addressBookUpdate";
+  private final static String BANK_AB_QUEUE = "addressBookRequest";
+  private final static String BANK_AB_TOPIC = "fullAddressBook";
+  private final static int queueTimeThreshold = 2500;
 
   private Connection bankStatusConnection;
   private Session bankStatusSession;
   private MessageConsumer bankStatusConsumer;
   private MessageProducer updateBookProducer;
+  private MessageConsumer bankAddressBookConsumer;
+  private MessageProducer bankAddressBookProducer;
 
   public BookKeeper() {
   }
@@ -55,32 +63,13 @@ public class BookKeeper {
 
     try {
       bankStatusConnection.start();
-      // Thread for receiving BankStatusMessage
-      new Thread(() -> {
-        try {
-          do {
-            Message message = bankStatusConsumer.receive();
-            if (message instanceof ObjectMessage) {
-              Object content = ((ObjectMessage) message).getObject();
-              if (content instanceof BankStatusMessage) {
-                BankStatusMessage bankStatusMessage = (BankStatusMessage) content;
 
-                String t = bankStatusCache.getIfPresent(bankStatusMessage.getBankId());
-                if (t == null) {
-                  bankStatusCache.put(bankStatusMessage.getBankId(), bankStatusMessage.getUrl());
-                  sendUpdateMessage(new BookChange(AddressBookChange.INSERT,
-                      new BankInfo(bankStatusMessage.getBankId(),
-                          bankStatusMessage.getUrl())));
-                }
+      // Thread for receiving BankStatusMessages
+      new Thread(this::bankStatusMessageHandler).start();
 
-                message.acknowledge();
-              }
-            }
-          } while (true);
-        } catch (JMSException e) {
-          e.printStackTrace();
-        }
-      }).start();
+      // Thread for processing addressBookMessages
+      new Thread(this::fullAddressBookMessageHandler).start();
+
     } catch (JMSException e) {
       e.printStackTrace();
     }
@@ -95,6 +84,20 @@ public class BookKeeper {
       }
     }
   }
+
+  public void publishAddressBook() {
+    try {
+      HashMap<String, String> addressBook = new HashMap<>(bankStatusCache.asMap());
+
+      AddressBookResponse newABResponse = new AddressBookResponse(addressBook);
+      Message currentAddressBook = bankStatusSession.createObjectMessage(newABResponse);
+
+      bankAddressBookProducer.send(currentAddressBook);
+    } catch (JMSException e) {
+      e.printStackTrace();
+    }
+  }
+
 
   /**
    * This method initialises all the JMS connections: connections, sessions, etc.
@@ -118,6 +121,12 @@ public class BookKeeper {
     //Topic for sending incremental updates to the address book when updates occur.
     Topic updateBookTopic = bankStatusSession.createTopic(ADDRESS_BOOK_UPDATE_QUEUE);
     updateBookProducer = bankStatusSession.createProducer(updateBookTopic);
+
+    Queue bankAddressBookQueue = bankStatusSession.createQueue(BANK_AB_QUEUE);
+    bankAddressBookConsumer = bankStatusSession.createConsumer(bankAddressBookQueue);
+
+    Topic bankAddressBookTopic = bankStatusSession.createTopic(BANK_AB_TOPIC);
+    bankAddressBookProducer = bankStatusSession.createProducer(bankAddressBookTopic);
   }
 
   private void sendUpdateMessage(BookChange bookChange) {
@@ -131,12 +140,62 @@ public class BookKeeper {
     }
   }
 
+  private void fullAddressBookMessageHandler() {
+    try {
+      do {
+        Message message = bankAddressBookConsumer.receive();
+        if (message instanceof ObjectMessage) {
+          Object content = ((ObjectMessage) message).getObject();
+          if (content instanceof AddressBookRequest) {
+            message.acknowledge();
+            long threshold = System.currentTimeMillis() + queueTimeThreshold;
+
+            while (System.currentTimeMillis() < threshold) {
+              message = bankAddressBookConsumer.receiveNoWait();
+              if (message == null) {
+                break;
+              }
+              message.acknowledge();
+            }
+            publishAddressBook();
+          }
+        }
+      } while (true);
+    } catch (JMSException e) {
+      e.printStackTrace();
+    }
+  }
+
+  private void bankStatusMessageHandler() {
+    try {
+      do {
+        Message message = bankStatusConsumer.receive();
+        if (message instanceof ObjectMessage) {
+          Object content = ((ObjectMessage) message).getObject();
+          if (content instanceof BankStatusMessage) {
+            BankStatusMessage bankStatusMessage = (BankStatusMessage) content;
+
+            String t = bankStatusCache.getIfPresent(bankStatusMessage.getBankId());
+            if (t == null) {
+              bankStatusCache.put(bankStatusMessage.getBankId(), bankStatusMessage.getUrl());
+              sendUpdateMessage(new BookChange(AddressBookChange.INSERT,
+                  new BankInfo(bankStatusMessage.getBankId(),
+                      bankStatusMessage.getUrl())));
+            }
+            message.acknowledge();
+          }
+        }
+      } while (true);
+    } catch (JMSException e) {
+      e.printStackTrace();
+    }
+  }
+
   public static void main(String[] args) throws JMSException {
     String host = "localhost";
     if (args.length > 0) {
       host = args[0];
     }
-
     BookKeeper bookKeeper = new BookKeeper();
     bookKeeper.start(host);
   }
