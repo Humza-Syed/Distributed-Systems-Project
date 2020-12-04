@@ -5,18 +5,18 @@ import java.io.Serializable;
 public class BookChange implements Serializable {
 
   private final AddressBookChange stateChange;
-  private final BankIndexElement bankIndexElement;
+  private final BankInfo bankInfo;
 
-  public BookChange(AddressBookChange stateChange, BankIndexElement bankIndexElement) {
+  public BookChange(AddressBookChange stateChange, BankInfo bankInfo) {
     this.stateChange = stateChange;
-    this.bankIndexElement = bankIndexElement;
+    this.bankInfo = bankInfo;
   }
 
   public AddressBookChange getStateChange() {
     return stateChange;
   }
 
-  public BankIndexElement getBankIndexElement() {
-    return bankIndexElement;
+  public BankInfo getBankIndexElement() {
+    return bankInfo;
   }
 }

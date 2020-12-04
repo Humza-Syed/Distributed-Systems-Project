@@ -2,11 +2,11 @@ package service.message;
 
 import java.io.Serializable;
 
-public class BankIndexElement implements Serializable {
+public class BankInfo implements Serializable {
   private final String bankId;
   private String url;
 
-  public BankIndexElement(String bankId, String url) {
+  public BankInfo(String bankId, String url) {
     this.bankId = bankId;
     this.url = url;
   }
