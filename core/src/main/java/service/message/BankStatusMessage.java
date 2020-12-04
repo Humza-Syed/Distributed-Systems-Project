@@ -4,14 +4,14 @@ import java.io.Serializable;
 
 public class BankStatusMessage implements Serializable {
 
-  private String messageId;
+  private String bankId;
   private String url;
 
   public BankStatusMessage() {
   }
 
   public BankStatusMessage(String id, String url) {
-    this.messageId = id;
+    this.bankId = id;
     this.url = url;
   }
 
@@ -19,7 +19,7 @@ public class BankStatusMessage implements Serializable {
     return url;
   }
 
-  public String getMessageId() {
-    return messageId;
+  public String getBankId() {
+    return bankId;
   }
 }

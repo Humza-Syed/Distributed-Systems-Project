@@ -16,27 +16,40 @@ import javax.jms.Session;
 import javax.jms.Topic;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import service.message.AddressBookChange;
-import service.message.BankIndexElement;
+import service.message.BankInfo;
 import service.message.BankStatusMessage;
 import service.message.BookChange;
 
+/**
+ * This class keeps a record of all the active banks, and send updates of the bank list to the
+ * subscribed atms via JMS queues and topics.
+ */
 public class BookKeeper {
 
   Cache<String, String> bankStatusCache = CacheBuilder.newBuilder()
-      .maximumSize(5)
       .expireAfterAccess(10, TimeUnit.SECONDS)
       .removalListener((RemovalListener<String, String>) removalNotification -> sendUpdateMessage(
-          removalNotification.getKey(), removalNotification.getValue()))
+          new BookChange(AddressBookChange.DROP,
+              new BankInfo(removalNotification.getKey(), removalNotification.getValue()))))
       .build();
 
   private final static String BANK_STATUS_QUEUE = "bankStatus";
+  private final static String ADDRESS_BOOK_UPDATE_QUEUE = "addressBookUpdate";
 
   private Connection bankStatusConnection;
+  private Session bankStatusSession;
   private MessageConsumer bankStatusConsumer;
+  private MessageProducer updateBookProducer;
 
   public BookKeeper() {
   }
 
+  /**
+   * This method runs the BookKeeper class.
+   *
+   * @param bookKeeperHost The host for the ActiveMQ connection.
+   * @throws JMSException Thrown when an issue occurs within JMS.
+   */
   public void start(String bookKeeperHost) throws JMSException {
     initialise(bookKeeperHost);
 
@@ -50,11 +63,14 @@ public class BookKeeper {
             if (message instanceof ObjectMessage) {
               Object content = ((ObjectMessage) message).getObject();
               if (content instanceof BankStatusMessage) {
-                BankStatusMessage inputMessage = (BankStatusMessage) content;
+                BankStatusMessage bankStatusMessage = (BankStatusMessage) content;
 
-                String t = bankStatusCache.getIfPresent(inputMessage.getMessageId());
+                String t = bankStatusCache.getIfPresent(bankStatusMessage.getBankId());
                 if (t == null) {
-                  bankStatusCache.put(inputMessage.getMessageId(), inputMessage.getUrl());
+                  bankStatusCache.put(bankStatusMessage.getBankId(), bankStatusMessage.getUrl());
+                  sendUpdateMessage(new BookChange(AddressBookChange.INSERT,
+                      new BankInfo(bankStatusMessage.getBankId(),
+                          bankStatusMessage.getUrl())));
                 }
 
                 message.acknowledge();
@@ -80,21 +96,39 @@ public class BookKeeper {
     }
   }
 
+  /**
+   * This method initialises all the JMS connections: connections, sessions, etc.
+   *
+   * @param bookKeeperHost The host for the connection used by the bookKeeper.
+   * @throws JMSException Throws exception when an issue occurs within JMS.
+   */
+  //TODO Move the connections to different connections.
   private void initialise(String bookKeeperHost) throws JMSException {
     // Initialising the bankStatus connection
     ConnectionFactory bankStatusConnectionFactory = new ActiveMQConnectionFactory(
         "failover://tcp://" + bookKeeperHost + ":61616");
     bankStatusConnection = bankStatusConnectionFactory.createConnection();
     bankStatusConnection.setClientID("BookKeeper");
-    Session bankStatusSession = bankStatusConnection
-        .createSession(false, Session.CLIENT_ACKNOWLEDGE);
+    bankStatusSession = bankStatusConnection.createSession(false, Session.CLIENT_ACKNOWLEDGE);
+
+    // Queue for receiving bankStatusMessages from banks.
     Queue bankStatusQueue = bankStatusSession.createQueue(BANK_STATUS_QUEUE);
     bankStatusConsumer = bankStatusSession.createConsumer(bankStatusQueue);
+
+    //Topic for sending incremental updates to the address book when updates occur.
+    Topic updateBookTopic = bankStatusSession.createTopic(ADDRESS_BOOK_UPDATE_QUEUE);
+    updateBookProducer = bankStatusSession.createProducer(updateBookTopic);
   }
 
-  private void sendUpdateMessage(String key, String value) {
-    //TODO Send update message via the topic
-    System.out.println("Bank was removed from cache: " + key + " value: " + value);
+  private void sendUpdateMessage(BookChange bookChange) {
+    /* Added exception handling here due to cache builder needing exception handling within this method.
+    Ideally would have better exception handling then just printing the stack trace.
+     */
+    try {
+      updateBookProducer.send(bankStatusSession.createObjectMessage(bookChange));
+    } catch (JMSException e) {
+      e.printStackTrace();
+    }
   }
 
   public static void main(String[] args) throws JMSException {
@@ -105,11 +139,5 @@ public class BookKeeper {
 
     BookKeeper bookKeeper = new BookKeeper();
     bookKeeper.start(host);
-  }
-
-  public static Boolean bankIndexExistenceCheck(BankIndexElement element) {
-    //TODO check element existence in local storage + reset timetodie
-
-    return true;
   }
 }
