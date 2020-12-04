@@ -1,9 +1,23 @@
 package service.atm;
 
+import java.util.HashMap;
 import java.util.UUID;
+import javax.jms.Connection;
+import javax.jms.ConnectionFactory;
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.MessageConsumer;
+import javax.jms.MessageProducer;
+import javax.jms.ObjectMessage;
+import javax.jms.Queue;
+import javax.jms.Session;
+import javax.jms.Topic;
+import org.apache.activemq.ActiveMQConnectionFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.web.client.RestTemplate;
 import service.core.Status;
+import service.message.AddressBookRequest;
+import service.message.AddressBookResponse;
 import service.message.TransactionRequest;
 import service.message.TransactionResponse;
 import service.message.TransactionType;
@@ -29,7 +43,7 @@ public class Atm {
     }
     System.out.println("Status: " + validationResponse.getStatus());
     System.out.println(validationResponse.getMessage());
-    if ( validationResponse.getStatus() != Status.SUCCESS){
+    if (validationResponse.getStatus() != Status.SUCCESS) {
       return "Validation was unsuccessful";
     }
     validationToken = validationResponse.getValidationToken();
@@ -60,7 +74,7 @@ public class Atm {
     }
     System.out.println("Status: " + transactionResponse.getStatus());
     System.out.println(transactionResponse.getMessage());
-    if (transactionResponse.getStatus() != Status.SUCCESS){
+    if (transactionResponse.getStatus() != Status.SUCCESS) {
       return "Transaction was unsuccessful";
     }
     if (transactionType == TransactionType.DEPOSIT) {
@@ -77,10 +91,53 @@ public class Atm {
     this.balance = balance;
   }
 
-  public static void main(String[] args){
-    Atm atm = new Atm(123,10000);
+  public static void main(String[] args) {
+    Atm atm = new Atm(123, 10000);
     System.out.println(atm.validate(1, 1000));
     System.out.println(atm.validate(1, 5555));
+
+    try {
+      ConnectionFactory factory = new ActiveMQConnectionFactory("failover://tcp://localhost:61616");
+      Connection connection = factory.createConnection();
+      connection.setClientID("ATM:" + UUID.randomUUID().toString());
+      Session session = connection.createSession(false, Session.CLIENT_ACKNOWLEDGE);
+
+      Queue addressBookQueue = session.createQueue("addressBookRequest");
+      MessageProducer addressBookProducer = session.createProducer(addressBookQueue);
+
+      Topic addressBookTopic = session.createTopic("fullAddressBook");
+      MessageConsumer addressBookConsumer = session.createConsumer(addressBookTopic);
+
+      connection.start();
+
+      new Thread(() -> {
+        try {
+          while (true) {
+            Message message = addressBookConsumer.receive();
+            if (message instanceof ObjectMessage) {
+              Object content = ((ObjectMessage) message).getObject();
+              if (content instanceof AddressBookResponse) {
+                AddressBookResponse data = (AddressBookResponse) content;
+                HashMap newAddressBook = data.getAddressBook();
+              }
+            }
+            message.acknowledge();
+          }
+        } catch (JMSException e) {
+          e.printStackTrace();
+        }
+      }).start();
+
+      do {
+        Thread.sleep(2000);
+        Message newRequest = session.createObjectMessage(new AddressBookRequest());
+        addressBookProducer.send(newRequest);
+      } while (true);
+
+    } catch (JMSException | InterruptedException e) {
+      e.printStackTrace();
+    }
+
   }
 
   private void deposit(double amount) {
