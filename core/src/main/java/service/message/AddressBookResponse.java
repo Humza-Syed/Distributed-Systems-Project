@@ -5,21 +5,21 @@ import java.util.HashMap;
 
 public class AddressBookResponse implements Serializable {
 
-  private HashMap addressBook;
+  private HashMap<String, String> addressBook;
 
   public AddressBookResponse() {
 
   }
 
-  public AddressBookResponse(HashMap addressBook) {
+  public AddressBookResponse(HashMap<String, String> addressBook) {
     this.addressBook = addressBook;
   }
 
-  public HashMap getAddressBook() {
+  public HashMap<String, String> getAddressBook() {
     return addressBook;
   }
 
-  public void setAddressBook(HashMap addressBook) {
+  public void setAddressBook(HashMap<String, String> addressBook) {
     this.addressBook = addressBook;
   }
 }
