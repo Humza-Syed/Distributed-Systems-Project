@@ -20,7 +20,6 @@ import service.message.AddressBookChange;
 import service.message.AddressBookRequest;
 import service.message.AddressBookResponse;
 import service.message.BankInfo;
-import service.message.BankStatusMessage;
 import service.message.BookChange;
 
 /**
@@ -65,7 +64,7 @@ public class BookKeeper {
       bankStatusConnection.start();
 
       // Thread for receiving BankStatusMessages
-      new Thread(this::bankStatusMessageHandler).start();
+      new Thread(this::bankInfoMessageHandler).start();
 
       // Thread for processing addressBookMessages
       new Thread(this::fullAddressBookMessageHandler).start();
@@ -166,21 +165,20 @@ public class BookKeeper {
     }
   }
 
-  private void bankStatusMessageHandler() {
+  private void bankInfoMessageHandler() {
     try {
       do {
         Message message = bankStatusConsumer.receive();
         if (message instanceof ObjectMessage) {
           Object content = ((ObjectMessage) message).getObject();
-          if (content instanceof BankStatusMessage) {
-            BankStatusMessage bankStatusMessage = (BankStatusMessage) content;
+          if (content instanceof BankInfo) {
+            BankInfo bankInfoMessage = (BankInfo) content;
 
-            String t = bankStatusCache.getIfPresent(bankStatusMessage.getBankId());
+            String t = bankStatusCache.getIfPresent(bankInfoMessage.getBankId());
             if (t == null) {
-              bankStatusCache.put(bankStatusMessage.getBankId(), bankStatusMessage.getUrl());
+              bankStatusCache.put(bankInfoMessage.getBankId(), bankInfoMessage.getUrl());
               sendUpdateMessage(new BookChange(AddressBookChange.INSERT,
-                  new BankInfo(bankStatusMessage.getBankId(),
-                      bankStatusMessage.getUrl())));
+                  new BankInfo(bankInfoMessage.getBankId(), bankInfoMessage.getUrl())));
             }
             message.acknowledge();
           }

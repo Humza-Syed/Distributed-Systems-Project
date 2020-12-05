@@ -3,6 +3,7 @@ package service.message;
 import java.io.Serializable;
 
 public class BankInfo implements Serializable {
+
   private final String bankId;
   private String url;
 

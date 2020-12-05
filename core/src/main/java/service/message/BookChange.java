@@ -16,7 +16,7 @@ public class BookChange implements Serializable {
     return stateChange;
   }
 
-  public BankInfo getBankIndexElement() {
+  public BankInfo getBankInfo() {
     return bankInfo;
   }
 }
