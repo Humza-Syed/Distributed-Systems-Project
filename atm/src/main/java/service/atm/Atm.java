@@ -30,13 +30,18 @@ public class Atm {
   private long atmId;
   private double balance;
   private String validationToken;
+  private static HashMap<String, String> addressBook = new HashMap<>();
+  private Connection connection;
+  private MessageConsumer addressBookConsumer;
+  private MessageProducer addressBookProducer;
+  private Session session;
 
-  public String validate(long accountId, int pinNumber) {
+  public String validate(long accountId, int pinNumber, String bankId) {
     RestTemplate restTemplate = new RestTemplate();
     HttpEntity<ValidationRequest> validationHttpRequest = new HttpEntity<>(
         new ValidationRequest(UUID.randomUUID().toString(), accountId, pinNumber));
     ValidationResponse validationResponse =
-        restTemplate.postForObject("http://localhost:8085/validation",
+        restTemplate.postForObject(addressBook.get(bankId) + "validation ",
             validationHttpRequest, ValidationResponse.class);
     if (validationResponse == null) {
       return "The bank was unable to process your validation";
@@ -47,14 +52,27 @@ public class Atm {
       return "Validation was unsuccessful";
     }
     validationToken = validationResponse.getValidationToken();
+
+    new Thread(() -> {
+      try {
+        Thread.sleep(2 * 60 * 1000);
+        // so atm's current state (i.e. stored variables) will "time out" after 2 minutes
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+      validationToken = null;
+    }).start();
+
     return "Validation has completed successfully";
   }
 
-  public String transact(long accountId, TransactionType transactionType, int amount) {
+  public String transact(long accountId, TransactionType transactionType, int amount,
+      String bankId) {
 
     if (amount <= 0) {
       return "Amount must be a positive number";
     } else if (transactionType == TransactionType.WITHDRAW && amount > balance) {
+      //TODO: Send message to AtmManager here, warning it of this low balance (once atmManagerUrl has been included as a class variable)
       return "ATM currently has insufficient funds for this withdrawal";
     } else if (validationToken == null) {
       return "Something went wrong - Your account has not been properly validated yet";
@@ -67,7 +85,7 @@ public class Atm {
         new TransactionRequest(transactionId, accountId, transactionType, amount, validationToken));
     validationToken = null;
     TransactionResponse transactionResponse =
-        restTemplate.postForObject("http://localhost:8085/transaction",
+        restTemplate.postForObject(addressBook.get(bankId) + "transaction",
             transactionHttpRequest, TransactionResponse.class);
     if (transactionResponse == null) {
       return "The bank was unable to process this transaction";
@@ -86,6 +104,20 @@ public class Atm {
     return "Transaction has been processed successfully";
   }
 
+  private void initialise() throws JMSException {
+    ConnectionFactory factory = new ActiveMQConnectionFactory("failover://tcp://localhost:61616");
+    // TODO: Replace hardcoded brokerUrl with class variable provided by AtmManager, once that's implemented
+    connection = factory.createConnection();
+    connection.setClientID("ATM:" + atmId);
+    session = connection.createSession(false, Session.CLIENT_ACKNOWLEDGE);
+
+    Queue addressBookQueue = session.createQueue("addressBookRequest");
+    addressBookProducer = session.createProducer(addressBookQueue);
+
+    Topic addressBookTopic = session.createTopic("fullAddressBook");
+    addressBookConsumer = session.createConsumer(addressBookTopic);
+  }
+
   public Atm(long atmId, double balance) {
     this.atmId = atmId;
     this.balance = balance;
@@ -93,23 +125,17 @@ public class Atm {
 
   public static void main(String[] args) {
     Atm atm = new Atm(123, 10000);
-    System.out.println(atm.validate(1, 1000));
-    System.out.println(atm.validate(1, 5555));
+    atm.start();
+    // Note: For live testing, bankId argument for validate and transact will need to match a real bank's bankId,
+    // so you can temporarily change the value set in BankRestFront.sendStatus()
+    // to a String literal instead of a random UUID ,so it's value can be known before compile time
 
+  }
+
+  public void start() {
     try {
-      ConnectionFactory factory = new ActiveMQConnectionFactory("failover://tcp://localhost:61616");
-      Connection connection = factory.createConnection();
-      connection.setClientID("ATM:" + UUID.randomUUID().toString());
-      Session session = connection.createSession(false, Session.CLIENT_ACKNOWLEDGE);
-
-      Queue addressBookQueue = session.createQueue("addressBookRequest");
-      MessageProducer addressBookProducer = session.createProducer(addressBookQueue);
-
-      Topic addressBookTopic = session.createTopic("fullAddressBook");
-      MessageConsumer addressBookConsumer = session.createConsumer(addressBookTopic);
-
+      initialise();
       connection.start();
-
       new Thread(() -> {
         try {
           while (true) {
@@ -118,7 +144,7 @@ public class Atm {
               Object content = ((ObjectMessage) message).getObject();
               if (content instanceof AddressBookResponse) {
                 AddressBookResponse data = (AddressBookResponse) content;
-                HashMap newAddressBook = data.getAddressBook();
+                addressBook = data.getAddressBook();
               }
             }
             message.acknowledge();
@@ -128,13 +154,20 @@ public class Atm {
         }
       }).start();
 
-      do {
-        Thread.sleep(2000);
-        Message newRequest = session.createObjectMessage(new AddressBookRequest());
-        addressBookProducer.send(newRequest);
-      } while (true);
+      new Thread(() -> {
+        try {
+          Message newRequest = session.createObjectMessage(new AddressBookRequest());
+          do {
+            Thread.sleep(2000);
+            addressBookProducer.send(newRequest);
+          } while (true);
 
-    } catch (JMSException | InterruptedException e) {
+        } catch (JMSException | InterruptedException e) {
+          e.printStackTrace();
+        }
+      }).start();
+
+    } catch (JMSException e) {
       e.printStackTrace();
     }
 
