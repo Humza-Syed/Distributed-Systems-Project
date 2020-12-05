@@ -6,7 +6,6 @@ import akka.actor.ActorRef;
 import akka.actor.Props;
 import akka.pattern.Patterns;
 import akka.util.Timeout;
-import bankmessage.BankTransactionRequest;
 import bankmessage.BankTransactionResponse;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -39,9 +38,9 @@ import scala.concurrent.Future;
 import service.bank.BankActor;
 import service.core.ActorStatus;
 import service.core.Status;
+import service.message.BankInfo;
 import service.message.TransactionRequest;
 import service.message.TransactionResponse;
-import service.message.BankStatusMessage;
 import service.message.ValidationRequest;
 import service.message.ValidationResponse;
 
@@ -164,9 +163,9 @@ public class BankRestFront {
         try {
           do {
             TimeUnit.MILLISECONDS.sleep(update_time);
-            BankStatusMessage statusObject = new BankStatusMessage(bankId, sourceURL);
-            Message statusMessage = session.createObjectMessage(statusObject);
-            producer.send(statusMessage);
+            BankInfo bankInfoObject = new BankInfo(bankId, sourceURL);
+            Message bankInfoMessage = session.createObjectMessage(bankInfoObject);
+            producer.send(bankInfoMessage);
             System.out.println("msg sent : " + new Timestamp(new Date().getTime()));
           } while (true);
         } catch (JMSException | InterruptedException e) {
