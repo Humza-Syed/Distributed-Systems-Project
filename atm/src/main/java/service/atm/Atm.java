@@ -14,6 +14,7 @@ import javax.jms.Session;
 import javax.jms.Topic;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.springframework.http.HttpEntity;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import service.core.Status;
 import service.message.AddressBookRequest;
@@ -40,9 +41,20 @@ public class Atm {
     RestTemplate restTemplate = new RestTemplate();
     HttpEntity<ValidationRequest> validationHttpRequest = new HttpEntity<>(
         new ValidationRequest(UUID.randomUUID().toString(), accountId, pinNumber));
-    ValidationResponse validationResponse =
-        restTemplate.postForObject(addressBook.get(bankId) + "validation ",
+    ValidationResponse validationResponse;
+    try {
+      validationResponse = restTemplate.postForObject(addressBook.get(bankId) + "validation",
+          validationHttpRequest, ValidationResponse.class);
+    } catch (RestClientException e) {
+      System.out.println("Trouble connecting - Retrying...");
+      try {
+        Thread.sleep(15000);
+        validationResponse = restTemplate.postForObject(addressBook.get(bankId) + "validation",
             validationHttpRequest, ValidationResponse.class);
+      } catch (InterruptedException | RestClientException e1) {
+        return "Could not connect to bank";
+      }
+    }
     if (validationResponse == null) {
       return "The bank was unable to process your validation";
     }
@@ -84,9 +96,20 @@ public class Atm {
     HttpEntity<TransactionRequest> transactionHttpRequest = new HttpEntity<>(
         new TransactionRequest(transactionId, accountId, transactionType, amount, validationToken));
     validationToken = null;
-    TransactionResponse transactionResponse =
-        restTemplate.postForObject(addressBook.get(bankId) + "transaction",
+    TransactionResponse transactionResponse;
+    try {
+      transactionResponse = restTemplate.postForObject(addressBook.get(bankId) + "transaction",
+          transactionHttpRequest, TransactionResponse.class);
+    } catch (RestClientException e) {
+      System.out.println("Trouble connecting - Retrying...");
+      try {
+        Thread.sleep(15000);
+        transactionResponse = restTemplate.postForObject(addressBook.get(bankId) + "transaction",
             transactionHttpRequest, TransactionResponse.class);
+      } catch (InterruptedException | RestClientException e1) {
+        return "Could not connect to bank";
+      }
+    }
     if (transactionResponse == null) {
       return "The bank was unable to process this transaction";
     }
