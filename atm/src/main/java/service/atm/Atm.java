@@ -55,6 +55,12 @@ public class Atm {
         validationResponse = restTemplate.postForObject(addressBook.get(bankId) + "validation",
             validationHttpRequest, ValidationResponse.class);
       } catch (InterruptedException | RestClientException e1) {
+        try {
+          Message newRequest = session.createObjectMessage(new AddressBookRequest());
+          addressBookProducer.send(newRequest);
+        } catch (JMSException e2) {
+          e2.printStackTrace();
+        }
         return "Could not connect to bank";
       }
     }
@@ -110,6 +116,12 @@ public class Atm {
         transactionResponse = restTemplate.postForObject(addressBook.get(bankId) + "transaction",
             transactionHttpRequest, TransactionResponse.class);
       } catch (InterruptedException | RestClientException e1) {
+        try {
+          Message newRequest = session.createObjectMessage(new AddressBookRequest());
+          addressBookProducer.send(newRequest);
+        } catch (JMSException e2) {
+          e2.printStackTrace();
+        }
         return "Could not connect to bank";
       }
     }
