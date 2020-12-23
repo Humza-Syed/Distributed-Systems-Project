@@ -6,9 +6,10 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface AccountRepository extends JpaRepository<Account, Integer> {
+public interface AccountRepository extends JpaRepository<BankAccount, Long> {
 
-  Optional<Account> findByAccountIdAndPinNumber(Long accountId, Integer pinNumber);
+  Optional<BankAccount> findByAccountIdAndPinNumber(long accountId, int pinNumber);
 
-  List<Account> findAllByBankId(Long bankId);
+  Optional<BankAccount> findByAccountId(long accountId);
+  List<BankAccount> findAllByBankId(long bankId);
 }

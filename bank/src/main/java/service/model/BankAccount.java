@@ -1,15 +1,13 @@
 package service.model;
 
-import java.util.Date;
 import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import org.hibernate.annotations.CreationTimestamp;
+import javax.persistence.Table;
 
 @Entity
-public class Account {
+@Table
+public class BankAccount {
 
   @Id
   @Column
@@ -22,18 +20,12 @@ public class Account {
   private String accHolderName;
   @Column
   private double balance;
-  @Column
-  @CreationTimestamp
-  private Date created_date;
-  @Column
-  @CreationTimestamp
-  private Date last_updated_date;
 
-  public Account() {
+  public BankAccount() {
   }
 
-  public Account(long bankId, long accountId, int pinNumber,
-      String accHolderName, double balance) {
+  public BankAccount(long bankId, long accountId, int pinNumber, String accHolderName,
+      double balance) {
     this.bankId = bankId;
     this.accountId = accountId;
     this.pinNumber = pinNumber;
@@ -79,21 +71,5 @@ public class Account {
 
   public void setBalance(double balance) {
     this.balance = balance;
-  }
-
-  public Date getCreated_date() {
-    return created_date;
-  }
-
-  public void setCreated_date(Date created_date) {
-    this.created_date = created_date;
-  }
-
-  public Date getLast_updated_date() {
-    return last_updated_date;
-  }
-
-  public void setLast_updated_date(Date last_updated_date) {
-    this.last_updated_date = last_updated_date;
   }
 }
