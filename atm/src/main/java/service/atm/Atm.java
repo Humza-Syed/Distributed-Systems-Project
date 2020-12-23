@@ -17,8 +17,10 @@ import org.springframework.http.HttpEntity;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import service.core.Status;
+import service.message.AddressBookChange;
 import service.message.AddressBookRequest;
 import service.message.AddressBookResponse;
+import service.message.BookChange;
 import service.message.TransactionRequest;
 import service.message.TransactionResponse;
 import service.message.TransactionType;
@@ -34,6 +36,7 @@ public class Atm {
   private static HashMap<String, String> addressBook = new HashMap<>();
   private Connection connection;
   private MessageConsumer addressBookConsumer;
+  private MessageConsumer addressBookUpdateConsumer;
   private MessageProducer addressBookProducer;
   private Session session;
 
@@ -52,6 +55,12 @@ public class Atm {
         validationResponse = restTemplate.postForObject(addressBook.get(bankId) + "validation",
             validationHttpRequest, ValidationResponse.class);
       } catch (InterruptedException | RestClientException e1) {
+        try {
+          Message newRequest = session.createObjectMessage(new AddressBookRequest());
+          addressBookProducer.send(newRequest);
+        } catch (JMSException e2) {
+          e2.printStackTrace();
+        }
         return "Could not connect to bank";
       }
     }
@@ -107,6 +116,12 @@ public class Atm {
         transactionResponse = restTemplate.postForObject(addressBook.get(bankId) + "transaction",
             transactionHttpRequest, TransactionResponse.class);
       } catch (InterruptedException | RestClientException e1) {
+        try {
+          Message newRequest = session.createObjectMessage(new AddressBookRequest());
+          addressBookProducer.send(newRequest);
+        } catch (JMSException e2) {
+          e2.printStackTrace();
+        }
         return "Could not connect to bank";
       }
     }
@@ -139,6 +154,9 @@ public class Atm {
 
     Topic addressBookTopic = session.createTopic("fullAddressBook");
     addressBookConsumer = session.createConsumer(addressBookTopic);
+
+    Topic addressBookUpdateTopic = session.createTopic("addressBookUpdate");
+    addressBookUpdateConsumer = session.createConsumer(addressBookUpdateTopic);
   }
 
   public Atm(long atmId, double balance) {
@@ -186,6 +204,28 @@ public class Atm {
           } while (true);
 
         } catch (JMSException | InterruptedException e) {
+          e.printStackTrace();
+        }
+      }).start();
+
+      new Thread(() -> {
+        try {
+          while (true) {
+            Message message = addressBookUpdateConsumer.receive();
+            if (message instanceof ObjectMessage) {
+              Object content = ((ObjectMessage) message).getObject();
+              if (content instanceof BookChange) {
+                BookChange data = (BookChange) content;
+                if (data.getStateChange() == AddressBookChange.DROP){
+                  addressBook.remove(data.getBankInfo().getBankId());
+                } else {
+                  addressBook.put(data.getBankInfo().getBankId(), data.getBankInfo().getUrl());
+                }
+              }
+            }
+            message.acknowledge();
+          }
+        } catch (JMSException e) {
           e.printStackTrace();
         }
       }).start();
