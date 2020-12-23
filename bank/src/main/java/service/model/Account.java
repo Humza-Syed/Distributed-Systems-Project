@@ -12,12 +12,10 @@ import org.hibernate.annotations.CreationTimestamp;
 public class Account {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.AUTO)
-  private Integer id;
-  @Column
-  private long bankId;
   @Column
   private long accountId;
+  @Column
+  private long bankId;
   @Column
   private int pinNumber;
   @Column
@@ -34,22 +32,13 @@ public class Account {
   public Account() {
   }
 
-  public Account(Integer id, long bankId, long accountId, int pinNumber,
+  public Account(long bankId, long accountId, int pinNumber,
       String accHolderName, double balance) {
-    this.id = id;
     this.bankId = bankId;
     this.accountId = accountId;
     this.pinNumber = pinNumber;
     this.accHolderName = accHolderName;
     this.balance = balance;
-  }
-
-  public Integer getId() {
-    return id;
-  }
-
-  public void setId(Integer id) {
-    this.id = id;
   }
 
   public long getBankId() {
