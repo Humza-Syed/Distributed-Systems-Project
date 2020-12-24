@@ -6,7 +6,6 @@ import java.util.UUID;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
-import service.core.Account;
 import service.core.Status;
 import service.message.TransactionRequest;
 import service.message.TransactionResponse;
@@ -30,7 +29,7 @@ public class BankActor extends AbstractActor {
 
   private ValidationResponse processValidationRequest(ValidationRequest validationRequest) {
     EntityManagerFactory entityManagerFactory = Persistence
-        .createEntityManagerFactory("account_database");
+        .createEntityManagerFactory("account_database_access");
     EntityManager entityManager = entityManagerFactory.createEntityManager();
     BankAccount bankAccount = entityManager
         .find(BankAccount.class, validationRequest.getAccountId());
@@ -49,7 +48,7 @@ public class BankActor extends AbstractActor {
 
   private BankTransactionResponse processTransactionRequest(TransactionRequest transactionRequest) {
     EntityManagerFactory entityManagerFactory = Persistence
-        .createEntityManagerFactory("account_database");
+        .createEntityManagerFactory("account_database_access");
     EntityManager entityManager = entityManagerFactory.createEntityManager();
     BankAccount bankAccount = entityManager.find(BankAccount.class, transactionRequest.getAccountId());
 

@@ -48,7 +48,10 @@ public class Application {
       }
 
     }
-    BankRestFront.sendStatus();
+
+    final String bankId = UUID.randomUUID().toString();
+    BankRestFront.createInitialAccounts(bankId);
+    BankRestFront.sendStatus(bankId);
     SpringApplication.run(Application.class, args);
   }
 }

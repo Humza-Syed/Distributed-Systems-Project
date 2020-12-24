@@ -3,17 +3,15 @@ package service.model;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
-import javax.persistence.Table;
 
 @Entity
-@Table
 public class BankAccount {
 
   @Id
   @Column
   private long accountId;
   @Column
-  private long bankId;
+  private String bankId;
   @Column
   private int pinNumber;
   @Column
@@ -24,7 +22,7 @@ public class BankAccount {
   public BankAccount() {
   }
 
-  public BankAccount(long bankId, long accountId, int pinNumber, String accHolderName,
+  public BankAccount(String bankId, long accountId, int pinNumber, String accHolderName,
       double balance) {
     this.bankId = bankId;
     this.accountId = accountId;
@@ -33,11 +31,11 @@ public class BankAccount {
     this.balance = balance;
   }
 
-  public long getBankId() {
+  public String getBankId() {
     return bankId;
   }
 
-  public void setBankId(long bankId) {
+  public void setBankId(String bankId) {
     this.bankId = bankId;
   }
 
