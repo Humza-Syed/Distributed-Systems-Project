@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
+<body>
+<form method="post" action="/validate">
+  <label class="col-lg-3 col-form-label" for="accountId">Account ID:</label>
+  <input class="form-control" type="accountId" id="accountId" name="accountId" required>
+  <label class="col-lg-3 col-form-label" for="pinNumber">PIN:</label>
+  <input class="form-control" type="pinNumber" id="pinNumber" name="pinNumber" required>
+  <label class="col-lg-3 col-form-label" for="bankId">Bank ID:</label>
+  <input class="form-control" type="bankId" id="bankId" name="bankId" required>
+  <div class="form-group row">
+    <div class="mt-4 mb-0 pb-0 col">
+      <button type="submit" class="btn btn-success">Enter</button>
+      (Please allow 5 seconds to process)
+    </div>
+  </div>
+</form>
+</body>
+</html>

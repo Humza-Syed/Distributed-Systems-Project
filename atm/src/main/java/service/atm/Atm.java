@@ -41,6 +41,9 @@ public class Atm {
   private Session session;
 
   public String validate(long accountId, int pinNumber, String bankId) {
+    if(addressBook.get(bankId) == null){
+      return "Unknown Bank";
+    }
     RestTemplate restTemplate = new RestTemplate();
     HttpEntity<ValidationRequest> validationHttpRequest = new HttpEntity<>(
         new ValidationRequest(UUID.randomUUID().toString(), accountId, pinNumber));
@@ -89,6 +92,9 @@ public class Atm {
 
   public String transact(long accountId, TransactionType transactionType, int amount,
       String bankId) {
+    if(addressBook.get(bankId) == null){
+      return "Unknown Bank";
+    }
 
     if (amount <= 0) {
       return "Amount must be a positive number";
