@@ -1,8 +1,14 @@
 package service.message;
 
-public class HeartbeatRequest extends Message{
+import java.io.Serializable;
 
-  public HeartbeatRequest(String messageId) {
-    super(messageId);
+public class HeartbeatRequest implements Serializable {
+
+  private String heartbeatId;
+
+  public HeartbeatRequest(String heartbeatId) { this.heartbeatId = heartbeatId; }
+
+  public String getHeartbeatId() {
+    return heartbeatId;
   }
 }
