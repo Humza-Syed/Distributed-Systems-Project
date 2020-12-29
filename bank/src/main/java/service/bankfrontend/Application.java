@@ -15,18 +15,18 @@ import service.core.ActorStatus;
 public class Application {
 
   public static ActorSystem system;
-  private static final int default_number = 3;
+  private static final int DEFAULT_NUMBER_OF_ACTORS = 3;
 
   public static void main(String[] args) {
 
     System.out.println(args.length);
     System.out.println(Arrays.toString(args));
     if (args.length == 0) {
-      args = new String[]{"-c", Integer.toString(default_number)};
+      args = new String[]{"-c", Integer.toString(DEFAULT_NUMBER_OF_ACTORS)};
     }
 
     system = ActorSystem.create();
-    int actor_count = default_number;
+    int actor_count = DEFAULT_NUMBER_OF_ACTORS;
 
     for (int i = 0; i < args.length; i++) {
       System.out.println(args[i]);
