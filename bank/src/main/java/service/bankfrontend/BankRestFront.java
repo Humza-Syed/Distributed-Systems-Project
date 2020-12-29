@@ -24,6 +24,9 @@ import javax.jms.Message;
 import javax.jms.MessageProducer;
 import javax.jms.Queue;
 import javax.jms.Session;
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -43,7 +46,7 @@ import service.message.TransactionRequest;
 import service.message.TransactionResponse;
 import service.message.ValidationRequest;
 import service.message.ValidationResponse;
-
+import service.model.BankAccount;
 
 @RestController
 public class BankRestFront {
@@ -121,6 +124,28 @@ public class BankRestFront {
     return new ResponseEntity<>(transactionResponse, httpHeaders, HttpStatus.CREATED);
   }
 
+  public static void createInitialAccounts(String bankId) {
+    EntityManagerFactory entityManagerFactory = Persistence
+        .createEntityManagerFactory("account_database_creation");
+    EntityManager entityManager = entityManagerFactory.createEntityManager();
+
+    for (int i = 1; i <= 5; i++) {
+      entityManager.getTransaction().begin();
+      BankAccount bankAccount = new BankAccount(bankId, i, i * 1000, "TestAcc" + i,
+          i * 1000);
+      // This code is only populating the database here for demo purposes
+      try {
+        entityManager.persist(bankAccount);
+        entityManager.getTransaction().commit();
+      } catch (Exception e) {
+        break;
+      }
+    }
+
+    entityManager.close();
+    entityManagerFactory.close();
+  }
+
   public static int getActorWaitTime() {
     return 0;
   }
@@ -140,9 +165,9 @@ public class BankRestFront {
     return newActor;
   }
 
-  public static void sendStatus() {
+  public static void sendStatus(String bankId) {
     try {
-      final String bankId = UUID.randomUUID().toString();
+      //final String bankId = UUID.randomUUID().toString();
       final String host = "localhost";
       final String sourceURL = "http://localhost:8085/";
       final long update_time = 2000;

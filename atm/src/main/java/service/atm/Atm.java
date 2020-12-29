@@ -6,18 +6,22 @@ import java.util.UUID;
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
 import javax.jms.JMSException;
-import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
 import javax.jms.ObjectMessage;
-import javax.jms.Queue;
 import javax.jms.Session;
 import javax.jms.Topic;
+import javax.jms.Queue;
+import javax.jms.Message;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import service.core.Status;
+import service.message.HeartbeatRequest;
+import service.message.HeartbeatResponse;
+import service.message.LowAtmBalanceRequest;
+import service.message.LowAtmBalanceResponse;
 import service.message.AddressBookChange;
 import service.message.AddressBookRequest;
 import service.message.AddressBookResponse;
@@ -30,16 +34,24 @@ import service.message.ValidationResponse;
 
 public class Atm {
 
+  public static final String HEARTBEAT_REQUEST_TOPIC_NAME = "atmToAtmManagerMessageTopic";
+  public static final String HEARTBEAT_RESPONSE_QUEUE_NAME = "atmToAtmManagerMessageQueue";
+
   private static long COUNT = 0;
-  private long atmId;
+  private String atmId;
   private double balance;
   private String validationToken;
+  private String atmUrl;
+
   private static HashMap<String, String> addressBook = new HashMap<>();
+
   private Connection connection;
+  private Session session;
   private MessageConsumer addressBookConsumer;
   private MessageConsumer addressBookUpdateConsumer;
   private MessageProducer addressBookProducer;
-  private Session session;
+  private MessageConsumer atmManagerMessageConsumer;
+  private MessageProducer atmManagerMessageProducer;
 
   public String validate(long accountId, int pinNumber, String bankId) {
     if(addressBook.get(bankId) == null){
@@ -100,14 +112,20 @@ public class Atm {
     if (amount <= 0) {
       return "Amount must be a positive number";
     } else if (transactionType == TransactionType.WITHDRAW && amount > balance) {
-      //TODO: Send message to AtmManager here, warning it of this low balance (once atmManagerUrl has been included as a class variable)
+      LowAtmBalanceRequest lowAtmBalanceRequest = new LowAtmBalanceRequest(atmId);
+      try {
+        atmManagerMessageProducer.send(session.createObjectMessage(lowAtmBalanceRequest));
+      } catch(Exception exception) {
+        exception.printStackTrace();
+      }
+      System.out.println("Atm[" + atmId + "] sent a low balance warning to atm manager.");
       return "ATM currently has insufficient funds for this withdrawal";
     } else if (validationToken == null) {
       return "Something went wrong - Your account has not been properly validated yet";
     }
 
     // transactionId is a combination of the unique atmId and an incrementing number
-    String transactionId = atmId + Long.toString(COUNT++);
+    String transactionId = atmId + COUNT++;
     RestTemplate restTemplate = new RestTemplate();
     HttpEntity<TransactionRequest> transactionHttpRequest = new HttpEntity<>(
         new TransactionRequest(transactionId, accountId, transactionType, amount, validationToken));
@@ -150,11 +168,16 @@ public class Atm {
   }
 
   private void initialise() throws JMSException {
-    ConnectionFactory factory = new ActiveMQConnectionFactory("failover://tcp://localhost:61616");
-    // TODO: Replace hardcoded brokerUrl with class variable provided by AtmManager, once that's implemented
+    ConnectionFactory factory = new ActiveMQConnectionFactory(atmUrl);
     connection = factory.createConnection();
     connection.setClientID("ATM:" + atmId);
     session = connection.createSession(false, Session.CLIENT_ACKNOWLEDGE);
+
+    Topic atmManagerMessageTopic = session.createTopic(HEARTBEAT_REQUEST_TOPIC_NAME);
+    atmManagerMessageConsumer = session.createConsumer(atmManagerMessageTopic);
+
+    Queue atmManagerMessageQueue = session.createQueue(HEARTBEAT_RESPONSE_QUEUE_NAME);
+    atmManagerMessageProducer = session.createProducer(atmManagerMessageQueue);
 
     Queue addressBookQueue = session.createQueue("addressBookRequest");
     addressBookProducer = session.createProducer(addressBookQueue);
@@ -166,13 +189,18 @@ public class Atm {
     addressBookUpdateConsumer = session.createConsumer(addressBookUpdateTopic);
   }
 
-  public Atm(long atmId, double balance) {
+  public Atm(String atmId, double balance, String atmUrl) {
     this.atmId = atmId;
     this.balance = balance;
+    this.atmUrl = atmUrl;
   }
 
   public static void main(String[] args) {
-    Atm atm = new Atm(123, 10000);
+    String hostName = (args.length == 0) ? "localhost" : args[0];
+    String atmUrl = "failover://tcp://" + hostName + ":61616";
+    String uniqueAtmID = UUID.randomUUID().toString();
+
+    Atm atm = new Atm(uniqueAtmID, 10000, atmUrl);
     atm.start();
     // Note: For live testing, bankId argument for validate and transact will need to match a real bank's bankId,
     // so you can temporarily change the value set in BankRestFront.sendStatus()
@@ -237,10 +265,31 @@ public class Atm {
         }
       }).start();
 
+      while(true) {
+        Message message = atmManagerMessageConsumer.receive();
+        if (message instanceof ObjectMessage) {
+          Object content = ((ObjectMessage) message).getObject();
+
+          if(content instanceof HeartbeatRequest) {
+            HeartbeatRequest heartbeatRequest = (HeartbeatRequest) content;
+            HeartbeatResponse heartbeatResponse = new HeartbeatResponse(heartbeatRequest.getHeartbeatId(), atmId, atmUrl);
+            if(balance < 100) {
+              LowAtmBalanceRequest lowAtmBalanceRequest = new LowAtmBalanceRequest(atmId);
+              atmManagerMessageProducer.send(session.createObjectMessage(lowAtmBalanceRequest));
+            }
+            Message response = session.createObjectMessage(heartbeatResponse);
+            atmManagerMessageProducer.send(response);
+
+          } else if(content instanceof LowAtmBalanceResponse) {
+            LowAtmBalanceResponse lowAtmBalanceResponse = (LowAtmBalanceResponse) content;
+            if(lowAtmBalanceResponse.getAtmId().equals(atmId)) balance = balance + lowAtmBalanceResponse.getTopUpAmount();
+          }
+        }
+        message.acknowledge();
+      }
     } catch (JMSException e) {
       e.printStackTrace();
     }
-
   }
 
   private void deposit(double amount) {
@@ -255,11 +304,15 @@ public class Atm {
     return addressBook.keySet();
   }
 
-  public long getAtmId() {
+  public String getAtmUrl() {
+    return atmUrl;
+  }
+
+  public String getAtmId() {
     return atmId;
   }
 
-  public void setAtmId(long atmId) {
+  public void setAtmId(String atmId) {
     this.atmId = atmId;
   }
 

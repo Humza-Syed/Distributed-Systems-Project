@@ -1,0 +1,12 @@
+package service.controller;
+
+import service.model.AccountRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+
+@Controller
+public class AccountController {
+  @Autowired
+  private AccountRepository accountRepository;
+
+}
