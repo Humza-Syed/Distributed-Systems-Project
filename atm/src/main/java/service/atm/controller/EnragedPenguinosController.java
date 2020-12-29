@@ -1,6 +1,7 @@
 package service.atm.controller;
 
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import service.atm.Atm;
@@ -14,17 +15,18 @@ public class EnragedPenguinosController {
   private String bankId;
 
   @GetMapping("/")
-  public String index() {
+  public String launchPage(Model model) throws InterruptedException {
+    atm = new Atm(123, 10000);
+    atm.start();
+    Thread.sleep(5000);   // time for atm.start() to finish setting up first
+    model.addAttribute("addressBook", atm.getKnownBanks());
     return "index.html";
   }
 
   @PostMapping("/validate")
-  public String validate(long accountId, int pinNumber, String bankId) throws InterruptedException {
+  public String validate(long accountId, int pinNumber, String bankId) {
     this.accountId = accountId;
     this.bankId = bankId;
-    atm = new Atm(123, 10000);
-    atm.start();
-    Thread.sleep(5000);   // time for atm.start() to finish setting up first
     String response = atm.validate(accountId, pinNumber, bankId);
     return response.equals("Validation has completed successfully")?"transaction.html":"failure.html";
   }

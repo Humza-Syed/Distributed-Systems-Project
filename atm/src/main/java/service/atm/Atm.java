@@ -1,6 +1,7 @@
 package service.atm;
 
 import java.util.HashMap;
+import java.util.Set;
 import java.util.UUID;
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
@@ -248,6 +249,10 @@ public class Atm {
 
   private void withdraw(double amount) {
     balance -= amount;
+  }
+
+  public Set<String> getKnownBanks() {
+    return addressBook.keySet();
   }
 
   public long getAtmId() {
