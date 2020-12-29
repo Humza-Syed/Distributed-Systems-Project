@@ -83,11 +83,11 @@ public class Bank {
 
   public static Map<Long, Account> importAccounts() {
     Map<Long, Account> defaultAccounts = new HashMap();
-    defaultAccounts.put(01L, new Account(01L, 1000, "testAcc1", null, 1000));
-    defaultAccounts.put(02L, new Account(02L, 2000, "testAcc2", null, 2000));
-    defaultAccounts.put(03L, new Account(03L, 3000, "testAcc3", null, 3000));
-    defaultAccounts.put(04L, new Account(04L, 4000, "testAcc4", null, 4000));
-    defaultAccounts.put(05L, new Account(05L, 5000, "testAcc5", null, 5000));
+    defaultAccounts.put(1L, new Account(1L, 1000, "testAcc1", null, 1000));
+    defaultAccounts.put(2L, new Account(2L, 2000, "testAcc2", null, 2000));
+    defaultAccounts.put(3L, new Account(3L, 3000, "testAcc3", null, 3000));
+    defaultAccounts.put(4L, new Account(4L, 4000, "testAcc4", null, 4000));
+    defaultAccounts.put(5L, new Account(5L, 5000, "testAcc5", null, 5000));
     return defaultAccounts;
   }
 
@@ -97,7 +97,7 @@ public class Bank {
     System.out.println(newBank);
     System.out.println(newBank.bankID);
     System.out.println(newBank.getAccounts());
-    newBank.displayAccount(01L, 1000L);
+    newBank.displayAccount(1L, 1000L);
   }
 
 }
