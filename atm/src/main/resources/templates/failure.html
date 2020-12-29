@@ -1,7 +1,18 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+  <title>Failure</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+        integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+</head>
 <body>
-Action failed. You can <a href="/">return to the homepage and start again.</a>.
-(For more detail see the console logs)
+<div style="height:50vh;padding:15%">
+  <div class="text-center">
+    <p style="border:1px solid red;background:pink">Transaction has failed.</p>
+    <p>Error Message: <span th:text="${errorMessage}"></span></p>
+    <p>To try again press the button below.</p>
+    <a class="btn btn-primary btn-lg" href="/validate">New Transaction</a>
+  </div>
+</div>
 </body>
 </html>

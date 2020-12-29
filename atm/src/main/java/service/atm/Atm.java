@@ -74,7 +74,7 @@ public class Atm {
     System.out.println("Status: " + validationResponse.getStatus());
     System.out.println(validationResponse.getMessage());
     if (validationResponse.getStatus() != Status.SUCCESS) {
-      return "Validation was unsuccessful";
+      return validationResponse.getMessage() + " - Validation was unsuccessful";
     }
     validationToken = validationResponse.getValidationToken();
 
@@ -138,7 +138,7 @@ public class Atm {
     System.out.println("Status: " + transactionResponse.getStatus());
     System.out.println(transactionResponse.getMessage());
     if (transactionResponse.getStatus() != Status.SUCCESS) {
-      return "Transaction was unsuccessful";
+      return transactionResponse.getMessage() + " - Transaction was unsuccessful";
     }
     if (transactionType == TransactionType.DEPOSIT) {
       deposit(amount);
