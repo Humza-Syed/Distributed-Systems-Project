@@ -1,18 +1,36 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+        integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+</head>
 <body>
-<form method="post" action="/transact">
-  <div class="form-check ml-0 pl-0 bg-light">
-    <label class="mr-4 form-check-label" for="Withdrawal">Withdrawal</label>
-    <input class="form-check-input" type="radio" id="Withdrawal" name="transactionTypeString" value="Withdrawal" required>
-    <label class="mr-4 ml-5 form-check-label" for="Deposit">Deposit</label>
-    <input class="form-check-input" type="radio" id="Deposit" name="transactionTypeString" value="Deposit" required>
+<div class="container mt-3">
+  <div class="row justify-content-center align-items-center mt-5">
+    <div class="col-6">
+      <div class="card">
+        <div class="card-body py-4 px-4"><form method="post" action="/transact">
+          <div class="form-check ml-0 pl-0 bg-light">
+            <label class="mr-4 form-check-label" for="Withdrawal">Withdrawal</label>
+            <input class="form-check-input" type="radio" id="Withdrawal" name="transactionTypeString" value="Withdrawal" required>
+            <label class="mr-4 ml-5 form-check-label" for="Deposit">Deposit</label>
+            <input class="form-check-input" type="radio" id="Deposit" name="transactionTypeString" value="Deposit" required>
+          </div>
+          <br>
+          <div class="form-group row">
+            <label class="col-lg-3 col-form-label" for="amount">Amount:</label>
+            <div class="col-lg-8">
+              <input class="form-control" type="number" id="amount" name="amount" required>
+            </div>
+          </div>
+          <div class="form-group row">
+            <div class="mt-4 mb-0 pb-0 col"><button type="submit" class="btn btn-success">Enter</button></div>
+          </div>
+        </form>
+        </div>
+      </div>
+    </div>
   </div>
-  <label class="col-lg-3 col-form-label" for="amount">Amount:</label>
-  <input class="form-control" type="amount" id="amount" name="amount" required>
-  <div class="form-group row">
-    <div class="mt-4 mb-0 pb-0 col"><button type="submit" class="btn btn-success">Enter</button></div>
-  </div>
-</form>
+</div>
 </body>
 </html>
