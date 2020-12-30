@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+  <title>Validation</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+        integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+</head>
+<body>
+<div class="container mt-3">
+  <div class="row justify-content-center align-items-center mt-5">
+    <div class="col-6">
+      <div class="card">
+        <div class="card-body py-4 px-4">
+          <form method="post" action="/validate">
+            <div class="form-group row">
+              <label class="col-lg-3 col-form-label" for="accountId">Account ID:</label>
+              <div class="col-lg-8">
+                <input class="form-control" type="number" id="accountId" name="accountId" required>
+              </div>
+            </div>
+            <div class="form-group row">
+              <label class="col-lg-3 col-form-label" for="pinNumber">PIN:</label>
+              <div class="col-lg-8">
+                <input class="form-control" type="number" id="pinNumber" name="pinNumber" required>
+              </div>
+            </div>
+            <div class="form-group row">
+              <label class="col-lg-3 col-form-label" for="bankId">Bank ID:</label>
+              <div class="col-lg-8">
+                <select id="bankId" name="bankId">
+                  <option value="">Select the Bank ID of your bank</option>
+                  <option th:each="bankId : ${addressBook}" th:value="${bankId}" th:text="${bankId}"></option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group row">
+              <div class="mt-4 mb-0 pb-0 col">
+                <button type="submit" class="btn btn-success">Enter</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,6 +1,7 @@
 package service.atm;
 
 import java.util.HashMap;
+import java.util.Set;
 import java.util.UUID;
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
@@ -53,6 +54,9 @@ public class Atm {
   private MessageProducer atmManagerMessageProducer;
 
   public String validate(long accountId, int pinNumber, String bankId) {
+    if(addressBook.get(bankId) == null){
+      return "Unknown Bank";
+    }
     RestTemplate restTemplate = new RestTemplate();
     HttpEntity<ValidationRequest> validationHttpRequest = new HttpEntity<>(
         new ValidationRequest(UUID.randomUUID().toString(), accountId, pinNumber));
@@ -82,7 +86,7 @@ public class Atm {
     System.out.println("Status: " + validationResponse.getStatus());
     System.out.println(validationResponse.getMessage());
     if (validationResponse.getStatus() != Status.SUCCESS) {
-      return "Validation was unsuccessful";
+      return validationResponse.getMessage() + " - Validation was unsuccessful";
     }
     validationToken = validationResponse.getValidationToken();
 
@@ -101,6 +105,9 @@ public class Atm {
 
   public String transact(long accountId, TransactionType transactionType, int amount,
       String bankId) {
+    if(addressBook.get(bankId) == null){
+      return "Unknown Bank";
+    }
 
     if (amount <= 0) {
       return "Amount must be a positive number";
@@ -149,7 +156,7 @@ public class Atm {
     System.out.println("Status: " + transactionResponse.getStatus());
     System.out.println(transactionResponse.getMessage());
     if (transactionResponse.getStatus() != Status.SUCCESS) {
-      return "Transaction was unsuccessful";
+      return transactionResponse.getMessage() + " - Transaction was unsuccessful";
     }
     if (transactionType == TransactionType.DEPOSIT) {
       deposit(amount);
@@ -258,28 +265,34 @@ public class Atm {
         }
       }).start();
 
-      while(true) {
-        Message message = atmManagerMessageConsumer.receive();
-        if (message instanceof ObjectMessage) {
-          Object content = ((ObjectMessage) message).getObject();
+      new Thread(() -> {
+        try {
+          while(true) {
+            Message message = atmManagerMessageConsumer.receive();
+            if (message instanceof ObjectMessage) {
+              Object content = ((ObjectMessage) message).getObject();
 
-          if(content instanceof HeartbeatRequest) {
-            HeartbeatRequest heartbeatRequest = (HeartbeatRequest) content;
-            HeartbeatResponse heartbeatResponse = new HeartbeatResponse(heartbeatRequest.getHeartbeatId(), atmId, atmUrl);
-            if(balance < 100) {
-              LowAtmBalanceRequest lowAtmBalanceRequest = new LowAtmBalanceRequest(atmId);
-              atmManagerMessageProducer.send(session.createObjectMessage(lowAtmBalanceRequest));
+              if(content instanceof HeartbeatRequest) {
+                HeartbeatRequest heartbeatRequest = (HeartbeatRequest) content;
+                HeartbeatResponse heartbeatResponse = new HeartbeatResponse(heartbeatRequest.getHeartbeatId(), atmId, atmUrl);
+                if(balance < 100) {
+                  LowAtmBalanceRequest lowAtmBalanceRequest = new LowAtmBalanceRequest(atmId);
+                  atmManagerMessageProducer.send(session.createObjectMessage(lowAtmBalanceRequest));
+                }
+                Message response = session.createObjectMessage(heartbeatResponse);
+                atmManagerMessageProducer.send(response);
+
+              } else if(content instanceof LowAtmBalanceResponse) {
+                LowAtmBalanceResponse lowAtmBalanceResponse = (LowAtmBalanceResponse) content;
+                if(lowAtmBalanceResponse.getAtmId().equals(atmId)) balance = balance + lowAtmBalanceResponse.getTopUpAmount();
+              }
             }
-            Message response = session.createObjectMessage(heartbeatResponse);
-            atmManagerMessageProducer.send(response);
-
-          } else if(content instanceof LowAtmBalanceResponse) {
-            LowAtmBalanceResponse lowAtmBalanceResponse = (LowAtmBalanceResponse) content;
-            if(lowAtmBalanceResponse.getAtmId().equals(atmId)) balance = balance + lowAtmBalanceResponse.getTopUpAmount();
+            message.acknowledge();
           }
+        } catch (JMSException e) {
+          e.printStackTrace();
         }
-        message.acknowledge();
-      }
+      }).start();
     } catch (JMSException e) {
       e.printStackTrace();
     }
@@ -291,6 +304,10 @@ public class Atm {
 
   private void withdraw(double amount) {
     balance -= amount;
+  }
+
+  public Set<String> getKnownBanks() {
+    return addressBook.keySet();
   }
 
   public String getAtmUrl() {
