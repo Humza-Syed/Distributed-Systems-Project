@@ -265,28 +265,34 @@ public class Atm {
         }
       }).start();
 
-      while(true) {
-        Message message = atmManagerMessageConsumer.receive();
-        if (message instanceof ObjectMessage) {
-          Object content = ((ObjectMessage) message).getObject();
+      new Thread(() -> {
+        try {
+          while(true) {
+            Message message = atmManagerMessageConsumer.receive();
+            if (message instanceof ObjectMessage) {
+              Object content = ((ObjectMessage) message).getObject();
 
-          if(content instanceof HeartbeatRequest) {
-            HeartbeatRequest heartbeatRequest = (HeartbeatRequest) content;
-            HeartbeatResponse heartbeatResponse = new HeartbeatResponse(heartbeatRequest.getHeartbeatId(), atmId, atmUrl);
-            if(balance < 100) {
-              LowAtmBalanceRequest lowAtmBalanceRequest = new LowAtmBalanceRequest(atmId);
-              atmManagerMessageProducer.send(session.createObjectMessage(lowAtmBalanceRequest));
+              if(content instanceof HeartbeatRequest) {
+                HeartbeatRequest heartbeatRequest = (HeartbeatRequest) content;
+                HeartbeatResponse heartbeatResponse = new HeartbeatResponse(heartbeatRequest.getHeartbeatId(), atmId, atmUrl);
+                if(balance < 100) {
+                  LowAtmBalanceRequest lowAtmBalanceRequest = new LowAtmBalanceRequest(atmId);
+                  atmManagerMessageProducer.send(session.createObjectMessage(lowAtmBalanceRequest));
+                }
+                Message response = session.createObjectMessage(heartbeatResponse);
+                atmManagerMessageProducer.send(response);
+
+              } else if(content instanceof LowAtmBalanceResponse) {
+                LowAtmBalanceResponse lowAtmBalanceResponse = (LowAtmBalanceResponse) content;
+                if(lowAtmBalanceResponse.getAtmId().equals(atmId)) balance = balance + lowAtmBalanceResponse.getTopUpAmount();
+              }
             }
-            Message response = session.createObjectMessage(heartbeatResponse);
-            atmManagerMessageProducer.send(response);
-
-          } else if(content instanceof LowAtmBalanceResponse) {
-            LowAtmBalanceResponse lowAtmBalanceResponse = (LowAtmBalanceResponse) content;
-            if(lowAtmBalanceResponse.getAtmId().equals(atmId)) balance = balance + lowAtmBalanceResponse.getTopUpAmount();
+            message.acknowledge();
           }
+        } catch (JMSException e) {
+          e.printStackTrace();
         }
-        message.acknowledge();
-      }
+      }).start();
     } catch (JMSException e) {
       e.printStackTrace();
     }

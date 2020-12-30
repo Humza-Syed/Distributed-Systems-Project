@@ -1,6 +1,7 @@
 package service.atm.controller;
 
 import java.io.IOException;
+import java.util.UUID;
 import javax.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -21,7 +22,9 @@ public class EnragedPenguinosController {
 
   @GetMapping("/")
   public String launchPage() {
-    atm = new Atm(123, 10000);
+    if (launched)
+      return "index.html";
+    atm = new Atm(UUID.randomUUID().toString(), 10000, "failover://tcp://localhost:61616");
     atm.start();
     launched = true;
     new Thread(() -> {
