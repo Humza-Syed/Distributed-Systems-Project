@@ -87,7 +87,7 @@ public class BankActor extends AbstractActor {
 
         // Cant overdraw the account
         //TODO Add overdraw limit to accounts?
-        if (bankAccount.getBalance() - transactionRequest.getValue() > 0) {
+        if (bankAccount.getBalance() - transactionRequest.getValue() >= 0) {
           entityManager.getTransaction().begin();
           withdraw(bankAccount, transactionRequest.getValue());
           entityManager.getTransaction().commit();
