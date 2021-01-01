@@ -14,6 +14,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -124,16 +125,18 @@ public class BankRestFront {
     return new ResponseEntity<>(transactionResponse, httpHeaders, HttpStatus.CREATED);
   }
 
+  // This code is only populating the database here for demo purposes
   public static void createInitialAccounts(String bankId) {
     EntityManagerFactory entityManagerFactory = Persistence
         .createEntityManagerFactory("account_database_creation");
     EntityManager entityManager = entityManagerFactory.createEntityManager();
 
-    for (int i = 1; i <= 5; i++) {
+    Random random = new Random();
+    int baseId = random.nextInt(1000);
+    for (int i = baseId; i <= (baseId + 5); i++) {
       entityManager.getTransaction().begin();
-      BankAccount bankAccount = new BankAccount(bankId, i, i * 1000, "TestAcc" + i,
-          i * 1000);
-      // This code is only populating the database here for demo purposes
+      BankAccount bankAccount = new BankAccount(bankId, i, random.nextInt(9999 - 1000 + 1) + 1000,
+          "TestAcc" + i, i * 1000);
       try {
         entityManager.persist(bankAccount);
         entityManager.getTransaction().commit();
@@ -191,7 +194,6 @@ public class BankRestFront {
             BankInfo bankInfoObject = new BankInfo(bankId, sourceURL);
             Message bankInfoMessage = session.createObjectMessage(bankInfoObject);
             producer.send(bankInfoMessage);
-            System.out.println("msg sent : " + new Timestamp(new Date().getTime()));
           } while (true);
         } catch (JMSException | InterruptedException e) {
           e.printStackTrace();
